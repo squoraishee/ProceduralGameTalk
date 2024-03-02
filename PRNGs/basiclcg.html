@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PRNG Visualization & Metrics</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        canvas {
+            border: 1px solid black;
+            margin-top: 10px;
+        }
+        .container {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .metrics {
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>Linear Congruential Generator (LCG)</h3>
+        <canvas id="canvasLCG" width="300" height="300"></canvas>
+        <div id="metricsLCG" class="metrics"></div>
+    </div>
+    <div class="container">
+        <h3>Middle-Square Method</h3>
+        <canvas id="canvasMiddleSquare" width="300" height="300"></canvas>
+        <div id="metricsMiddleSquare" class="metrics"></div>
+    </div>
+    <div class="container">
+        <h3>XORShift</h3>
+        <canvas id="canvasXORShift" width="300" height="300"></canvas>
+        <div id="metricsXORShift" class="metrics"></div>
+    </div>
+
+    <script>
+        // PRNG seeds
+        let seedLCG = 1;
+        let seedMiddleSquare = 987654321;
+        let seedXORShift = 123456789;
+        
+        // Arrays to hold PRNG outputs
+        let numbersLCG = [], numbersMiddleSquare = [], numbersXORShift = [];
+
+        // Linear Congruential Generator
+        function lcg() {
+            const a = 1664525;
+            const c = 1013904223;
+            const m = Math.pow(2, 32);
+            seedLCG = (a * seedLCG + c) % m;
+            return seedLCG / m;
+        }
+
+        // Middle-Square Method
+        function middleSquare() {
+            seedMiddleSquare = parseInt((seedMiddleSquare * seedMiddleSquare).toString().padStart(16, '0').substr(4, 8));
+            return seedMiddleSquare / 100000000;
+        }
+
+        // XORShift Algorithm
+        function xorShift() {
+            seedXORShift ^= seedXORShift << 13;
+            seedXORShift ^= seedXORShift >> 17;
+            seedXORShift ^= seedXORShift << 5;
+            return Math.abs(seedXORShift % 1000) / 1000;
+        }
+
+        // Statistical Functions (add here)
+
+        // Serial Correlation Coefficient
+        function serialCorrelation(numbers) {
+            let mean = numbers.reduce((acc, val) => acc + val, 0) / numbers.length;
+            let num = 0;
+            let den = 0;
+
+            for (let i = 1; i < numbers.length; i++) {
+                num += (numbers[i] - mean) * (numbers[i - 1] - mean);
+                den += (numbers[i] - mean) * (numbers[i] - mean);
+            }
+
+            return num / den;
+        }
+
+        // Chi-Squared Test
+        function chiSquared(numbers) {
+            const expected = numbers.length / 10; // Assume 10 buckets
+            let observed = new Array(10).fill(0);
+
+            numbers.forEach(num => {
+                observed[Math.floor(num * 10)]++;
+            });
+
+            return observed.reduce((sum, o) => sum + ((o - expected) ** 2) / expected, 0);
+        }
+
+        // Kolmogorov-Smirnov Test
+        function kolmogorovSmirnov(numbers) {
+            const sortedNumbers = [...numbers].sort((a, b) => a - b);
+            let maxDifference = 0;
+
+            for (let i = 0; i < sortedNumbers.length; i++) {
+                const empiricalDistribution = (i + 1) / sortedNumbers.length;
+                const theoreticalDistribution = sortedNumbers[i];
+                const difference = Math.abs(empiricalDistribution - theoreticalDistribution);
+
+                maxDifference = Math.max(maxDifference, difference);
+            }
+
+            return maxDifference;
+        }
+
+        // Plotting Function
+        function plotPoint(canvasId, x, y) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            ctx.fillStyle = 'black';
+            ctx.fillRect(x, y, 1, 1); // Draw a
+            // Draw a small rectangle (point)
+        }
+
+        // Animation and metrics update function
+        function animate() {
+            for (let i = 0; i < 100; i++) { // Increase the number of points for better visualization
+                // LCG points and metrics update
+                const valLCG = lcg();
+                plotPoint('canvasLCG', 300 * valLCG, 300 * lcg());
+                numbersLCG.push(valLCG);
+
+                // Middle-Square points and metrics update
+                const valMiddleSquare = middleSquare();
+                plotPoint('canvasMiddleSquare', 300 * valMiddleSquare, 300 * middleSquare());
+                numbersMiddleSquare.push(valMiddleSquare);
+
+                // XORShift points and metrics update
+                const valXORShift = xorShift();
+                plotPoint('canvasXORShift', 300 * valXORShift, 300 * xorShift());
+                numbersXORShift.push(valXORShift);
+            }
+
+            // Update displayed metrics
+            updateMetrics('LCG', numbersLCG);
+            updateMetrics('MiddleSquare', numbersMiddleSquare);
+            updateMetrics('XORShift', numbersXORShift);
+
+            requestAnimationFrame(animate); // Keep the animation running
+        }
+
+        // Function to calculate and display the metrics
+        function updateMetrics(generatorName, numbers) {
+            const mean = numbers.reduce((acc, val) => acc + val, 0) / numbers.length;
+            const variance = numbers.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / numbers.length;
+            const serialCorr = serialCorrelation(numbers).toFixed(5);
+            const chiSq = chiSquared(numbers).toFixed(5);
+            const ks = kolmogorovSmirnov(numbers).toFixed(5);
+
+            document.getElementById('metrics' + generatorName).innerText = 
+                `Mean: ${mean.toFixed(5)}, Variance: ${variance.toFixed(5)}, ` + 
+                `Serial Correlation: ${serialCorr}, Chi-Squared: ${chiSq}, K-S: ${ks}`;
+        }
+
+        // Start the animation
+        animate();
+    </script>
+</body>
+</html>
