@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PRNG Visualization & Advanced Metrics</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        canvas { border: 1px solid black; margin-top: 10px; }
+        .container { display: inline-block; margin-right: 20px; }
+        .metrics { margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>Linear Congruential Generator (LCG)</h3>
+        <canvas id="canvasLCG" width="300" height="300"></canvas>
+        <div id="metricsLCG" class="metrics"></div>
+    </div>
+    <div class="container">
+        <h3>Middle-Square Method</h3>
+        <canvas id="canvasMiddleSquare" width="300" height="300"></canvas>
+        <div id="metricsMiddleSquare" class="metrics"></div>
+    </div>
+    <div class="container">
+        <h3>XORShift</h3>
+        <canvas id="canvasXORShift" width="300" height="300"></canvas>
+        <div id="metricsXORShift" class="metrics"></div>
+    </div>
+    <script>
+        let seedLCG = 1, seedMiddleSquare = 987654321, seedXORShift = 123456789;
+        let numbersLCG = [], numbersMiddleSquare = [], numbersXORShift = [];
+
+        function lcg() { /* LCG function here */ }
+        function middleSquare() { /* Middle-Square function here */ }
+        function xorShift() { /* XORShift function here */ }
+        function plotPoint(canvasId, x, y) { /* Plotting function here */ }
+        function animate() { /* Animation function here */ }
+
+        function serialCorrelation(numbers) {
+            let mean = numbers.reduce((a, b) => a + b, 0) / numbers.length;
+            let num = 0;
+            let den = 0;
+            for (let i = 1; i < numbers.length; i++) {
+                num += (numbers[i] - mean) * (numbers[i - 1] - mean);
+                den += Math.pow(numbers[i] - mean, 2);
+            }
+            return num / den;
+        }
+
+        function chiSquared(numbers) {
+            const buckets = 10;
+            const expected = numbers.length / buckets;
+            let observed = new Array(buckets).fill(0);
+            numbers.forEach(num => observed[Math.floor(num * buckets)]++);
+            return observed.reduce((sum, o) => sum + Math.pow(o - expected, 2) / expected, 0);
+        }
+
+        function chiSquaredPValue(chiSqStat) {
+            const k = 9; // degrees of freedom = number of buckets - 1
+            return Math.exp(-0.5 * chiSqStat) * Math.pow(chiSqStat, k / 2 - 1) / gamma(k / 2);
+        }
+
+        function gamma(z) {
+            const g = 7;
+            const C = [
+                0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+                771.32342877765313, -176.61502916214059, 12.507343278686905,
+                -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+            ];
+            if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+            else {
+                z -= 1;
+                let x = C[0];
+                for (let i = 1; i < g + 2; i++) x += C[i] / (z + i);
+                let t = z + g + 0.5;
+                return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+            }
+        }
+
+        function kolmogorovSmirnov(numbers) {
+            const n = numbers.length;
+            const sortedNumbers = numbers.slice().sort((a, b) => a - b);
+            let maxDifference = 0;
+
+            for (let i = 0; i < n; i++) {
+                const cdfValue = (i + 1) / n;
+                const difference1 = Math.abs(sortedNumbers[i] - cdfValue);
+                const difference2 = i > 0 ? Math.abs(sortedNumbers[i - 1] - cdfValue) : sortedNumbers[i];
+                maxDifference = Math.max(maxDifference, difference1, difference2);
+            }
+
+            return maxDifference;
+        }
+
+        function updateMetrics(generatorName, numbers) {
+            const serialCorr = serialCorrelation(numbers).toFixed(5);
+            const chiSq = chiSquared(numbers).toFixed(5);
+            const pValue = chiSquaredPValue(chiSq).toFixed(5);
+            const ks = kolmogorovSmirnov(numbers).toFixed(5);
+            const ksCritical = 1.36 / Math.sqrt(numbers.length); // For alpha = 0.05
+
+            document.getElementById('metrics' + generatorName).innerText =
+                `Serial Correlation: ${serialCorr}, Chi-Squared: ${chiSq}, ` +
+                `P-Value: ${pValue}, K-S: ${ks}, K-S Critical: ${ksCritical.toFixed(5)}`;
+        }
+
+        function animate() {
+            for (let i = 0; i < 100; i++) {
+                let valLCG = lcg();
+                plotPoint('canvasLCG', 300 * valLCG, 300 * lcg());
+                numbersLCG.push(valLCG);
+
+                let valMiddleSquare = middleSquare();
+                plotPoint('canvasMiddleSquare', 300 * valMiddleSquare, 300 * middleSquare());
+                numbersMiddleSquare.push(valMiddleSquare);
+
+                let valXORShift = xorShift();
+                plotPoint('canvasXORShift', 300 * valXORShift, 300 * xorShift());
+                numbersXORShift.push(valXORShift);
+            }
+
+            updateMetrics('LCG', numbersLCG);
+            updateMetrics('MiddleSquare', numbersMiddleSquare);
+            updateMetrics('XORShift', numbersXORShift);
+
+            requestAnimationFrame(animate);
+        }
+
+        animate(); // Start the animation loop
+
+
+        function lcg() {
+            const a = 1664525;
+            const c = 1013904223;
+            const m = Math.pow(2, 32);
+            seedLCG = (a * seedLCG + c) % m;
+            return seedLCG / m;
+        }
+
+        function middleSquare() {
+            let seedStr = String(seedMiddleSquare * seedMiddleSquare).padStart(16, '0');
+            seedMiddleSquare = parseInt(seedStr.substring(4, 12));
+            return seedMiddleSquare / 100000000;
+        }
+
+        function xorShift() {
+            seedXORShift ^= seedXORShift << 13;
+            seedXORShift ^= seedXORShift >> 17;
+            seedXORShift ^= seedXORShift << 5;
+            return Math.abs(seedXORShift / Math.pow(2, 32));
+        }
+
+        function plotPoint(canvasId, x, y) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            ctx.fillStyle = 'black';
+            ctx.fillRect(x, y, 1, 1); // Draw a small rectangle (point)
+        }
+    </script>
+</body>
+</html>
+
