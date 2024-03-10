@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Graph Grammar City Generator</title>
+    <style>
+        body { display: flex; justify-content: center; margin-top: 20px; }
+        canvas { border: 1px solid #000; }
+    </style>
+</head>
+<body>
+    <canvas id="cityCanvas" width="800" height="800"></canvas>
+    <script>
+        const canvas = document.getElementById('cityCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20; // Each cell is 20x20 pixels
+        const citySize = 40; // The city is 40x40 cells
+        let cityGraph = new Array(citySize).fill(null).map(() => new Array(citySize).fill(0));
+
+        const EMPTY = 0;
+        const BUILDING = 1;
+        const ROAD = 2;
+        const PARK = 3;
+
+        // Graph grammar rules
+        const rules = {
+            [EMPTY]: (x, y, graph) => {
+                if (hasAdjacent(graph, x, y, ROAD)) {
+                    const rand = Math.random();
+                    if (rand < 0.1) return BUILDING;
+                    if (rand < 0.15) return PARK;
+                }
+                return EMPTY;
+            },
+        };
+
+        function hasAdjacent(graph, x, y, value) {
+            const dirs = [[0,1], [1,0], [0,-1], [-1,0]]; // Four directions: N, E, S, W
+            return dirs.some(([dx, dy]) => {
+                const nx = x + dx, ny = y + dy;
+                return nx >= 0 && nx < citySize && ny >= 0 && ny < citySize && graph[nx][ny] === value;
+            });
+        }
+
+        function applyRules(graph) {
+            const newGraph = graph.map(row => [...row]);
+
+            for (let y = 0; y < citySize; y++) {
+                for (let x = 0; x < citySize; x++) {
+                    const cell = graph[x][y];
+                    const rule = rules[cell];
+                    if (rule) {
+                        newGraph[x][y] = rule(x, y, graph);
+                    }
+                }
+            }
+
+            return newGraph;
+        }
+
+        function drawCity(graph) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let y = 0; y < citySize; y++) {
+                for (let x = 0; x < citySize; x++) {
+                    const cell = graph[x][y];
+                    ctx.fillStyle = getCellColor(cell);
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+        }
+
+        function getCellColor(cell) {
+            switch (cell) {
+                case BUILDING: return '#333';
+                case ROAD: return '#777';
+                case PARK: return '#228B22';
+                default: return '#eee'; // Empty Space
+            }
+        }
+
+        for (let i = 0; i < citySize; i++) {
+            if (i % 5 === 0) { 
+                for (let j = 0; j < citySize; j++) {
+                    cityGraph[i][j] = ROAD;
+                    cityGraph[j][i] = ROAD;
+                }
+            }
+        }
+
+        function simulateCityGrowth(steps) {
+            for (let i = 0; i < steps; i++) {
+                cityGraph = applyRules(cityGraph);
+            }
+            drawCity(cityGraph);
+        }
+
+        simulateCityGrowth(3);
+    </script>
+</body>
+</html>
+

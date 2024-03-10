@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rule 30 Cellular Automaton Animation</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        canvas { border: 1px solid black; }
+    </style>
+</head>
+<body>
+<canvas id="caCanvas"></canvas>
+<script>
+    const canvas = document.getElementById('caCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const width = 800;
+    const height = 600;
+    const cellSize = 4;
+    canvas.width = width;
+    canvas.height = height;
+
+    let cells = Array(Math.floor(width / cellSize)).fill(0);
+    cells[Math.floor(cells.length / 2)] = 1;
+
+    function rule30(left, center, right) {
+        return left ^ (center || right);
+    }
+
+    let generation = 0;
+
+    function draw() {
+        if (generation * cellSize < height) {
+            for (let i = 0; i < cells.length; i++) {
+                ctx.fillStyle = cells[i] === 1 ? 'black' : 'white';
+                ctx.fillRect(i * cellSize, generation * cellSize, cellSize, cellSize);
+            }
+            let newCells = Array(cells.length).fill(0);
+            for (let i = 1; i < cells.length - 1; i++) {
+                newCells[i] = rule30(cells[i-1], cells[i], cells[i+1]);
+            }
+            cells = newCells;
+            generation++;
+        }
+    }
+
+    function animate() {
+        setTimeout(function() {
+            requestAnimationFrame(animate);
+            draw();
+        }, 100);
+    }
+
+    // Start the animation
+    animate();
+</script>
+</body>
+</html>
+
+

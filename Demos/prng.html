@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wave Simulation with fBm</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        let renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        let geometry = new THREE.PlaneGeometry(100, 100, 100, 100);
+        let material = new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true });
+        let plane = new THREE.Mesh(geometry, material);
+        scene.add(plane);
+
+        camera.position.z = 50;
+
+        function applyfBm(geometry, time) {
+            for (let i = 0; i < geometry.vertices.length; i++) {
+                let vertex = geometry.vertices[i];
+                vertex.z = fBm(vertex.x, vertex.y, time);
+            }
+            geometry.verticesNeedUpdate = true;
+        }
+
+        function fBm(x, y, t) {
+            return Math.sin(x / 2 + t) * Math.cos(y / 2 + t);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            applyfBm(plane.geometry, performance.now() / 1000);
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
+

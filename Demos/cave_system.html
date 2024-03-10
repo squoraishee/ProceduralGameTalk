@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cave System Generator with Controls and Animation</title>
+    <style>
+        body { 
+            display: flex; 
+            justify-content: center; 
+            flex-direction: column; 
+            align-items: center; 
+            margin-top: 20px; 
+            background-color: #000; 
+            color: #fff;
+        }
+        canvas { 
+            border: 1px solid #fff; 
+        }
+        .controls { 
+            display: flex; 
+            justify-content: center; 
+            margin-bottom: 20px; 
+        }
+        .control-item {
+            margin-right: 10px;
+        }
+        label {
+            display: block;
+        }
+        input, button {
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-item">
+            <label for="fillPercentage">Initial Fill Percentage:</label>
+            <input type="range" id="fillPercentage" name="fillPercentage" min="0" max="100" value="50">
+            <span id="fillPercentageValue">50%</span>
+        </div>
+        <div class="control-item">
+            <label for="birthLimit">Birth Limit:</label>
+            <input type="number" id="birthLimit" name="birthLimit" min="0" max="8" value="4">
+        </div>
+        <div class="control-item">
+            <label for="deathLimit">Death Limit:</label>
+            <input type="number" id="deathLimit" name="deathLimit" min="0" max="8" value="3">
+        </div>
+        <div class="control-item">
+            <button id="generate">Generate</button>
+        </div>
+    </div>
+    <canvas id="caveCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('caveCanvas');
+        const ctx = canvas.getContext('2d');
+        const resolution = 4;
+        const cols = canvas.width / resolution;
+        const rows = canvas.height / resolution;
+        let grid;
+        let steadyState = false;
+        let previousGrid = [];
+        const steadyStateThreshold = 5;
+        let unchangedGenerations = 0;
+
+        const fillPercentageInput = document.getElementById('fillPercentage');
+        const fillPercentageValue = document.getElementById('fillPercentageValue');
+        const birthLimitInput = document.getElementById('birthLimit');
+        const deathLimitInput = document.getElementById('deathLimit');
+        const generateButton = document.getElementById('generate');
+
+        fillPercentageInput.oninput = function() {
+            fillPercentageValue.textContent = `${this.value}%`;
+        };
+
+        function getRandomInitialState(fillPercentage) {
+            return Math.random() < fillPercentage / 100 ? {state: 1, color: getRandomBrownColor()} : {state: 0, color: '#000'};
+        }
+
+        function createGrid() {
+            let arr = new Array(cols);
+            let fillPercentage = parseInt(fillPercentageInput.value);
+            for (let i = 0; i < arr.length; i++) {
+                arr[i] = new Array(rows);
+                for (let j = 0; j < arr[i].length; j++) {
+                    arr[i][j] = getRandomInitialState(fillPercentage);
+                }
+            }
+            return arr;
+        }
+
+        function getRandomBrownColor() {
+            const brownShades = ['#8B4513', '#A52A2A', '#D2691E', '#CD853F', '#F4A460'];
+            return brownShades[Math.floor(Math.random() * brownShades.length)];
+        }
+
+        function drawGrid(grid) {
+            for (let col = 0; col < grid.length; col++) {
+                for (let row = 0; row < grid[col].length; row++) {
+                    const cell = grid[col][row];
+                    ctx.fillStyle = cell.color;
+                    ctx.fillRect(col * resolution, row * resolution, resolution, resolution);
+                }
+            }
+        }
+
+        function countNeighbors(grid, x, y) {
+            let sum = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const col = (x + i + cols) % cols;
+                    const row = (y + j + rows) % rows;
+                    sum += grid[col][row].state;
+                }
+            }
+            sum -= grid[x][y].state;
+            return sum;
+        }
+
+        function step() {
+            let newGrid = createGrid();
+            let changes = 0;
+
+            for (let col = 0; col < grid.length; col++) {
+                for (let row = 0; row < grid[col].length; row++) {
+                    const cell = grid[col][row];
+                    const neighbors = countNeighbors(grid, col, row);
+                    if(cell.state === 0 && neighbors >= birthLimitInput.value) {
+                        newGrid[col][row] = { state: 1, color: getRandomBrownColor() };
+                        changes++;
+                    } else if(cell.state === 1 && neighbors < deathLimitInput.value) {
+                        newGrid[col][row] = { state: 0, color: '#000' };
+                        changes++;
+                    } else {
+                        newGrid[col][row] = cell;
+                    }
+                }
+            }
+
+            if (changes === 0) {
+                unchangedGenerations++;
+                if (unchangedGenerations >= steadyStateThreshold) {
+                    steadyState = true;
+                    console.log("Reached steady state.");
+                    return;
+                }
+            } else {
+                unchangedGenerations = 0;
+            }
+
+            grid = newGrid;
+            drawGrid(grid);
+        }
+
+        generateButton.onclick = function() {
+            grid = createGrid();
+            steadyState = false; 
+            previousGrid = [];
+            unchangedGenerations = 0;
+            requestAnimationFrame(animateStep);
+        };
+
+        function animateStep() {
+            if (!steadyState) {
+                step();
+                requestAnimationFrame(animateStep);
+            }
+        }
+
+        grid = createGrid();
+        drawGrid(grid);
+    </script>
+</body>
+</html>
+
+

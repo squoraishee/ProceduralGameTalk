@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Voronoi Map with Enhanced Controls</title>
+    <style>
+        body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .map-container { margin-bottom: 40px; text-align: center; }
+        canvas { border: 1px solid black; margin-bottom: 5px; }
+        .controls { margin-bottom: 20px; }
+        .parameters, .legend { font-family: Arial, sans-serif; font-size: 14px; margin-top: 10px; }
+        .legend span { font-size: larger; }
+    </style>
+</head>
+<body>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<div class="controls">
+    <label for="seedCount">Seed Count: <span id="seedCountValue">15</span></label>
+    <input type="range" id="seedCount" min="5" max="30" value="15">
+    <br>
+    <label for="spread">Spread: <span id="spreadValue">0.5</span></label>
+    <input type="range" id="spread" min="0.1" max="1" step="0.1" value="0.5">
+    <br>
+    <label for="scale">Label Scale: <span id="scaleValue">1</span></label>
+    <input type="range" id="scale" min="0.5" max="2" step="0.1" value="1">
+</div>
+<div class="map-container">
+    <canvas id="mapCanvas"></canvas>
+    <div class="legend" id="legend"></div>
+    <div class="parameters" id="params"></div>
+</div>
+<script>
+function generateVoronoiMap(seedCount, spread, scale) {
+    const canvas = document.getElementById('mapCanvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 600;
+    canvas.height = 400;
+
+    const terrainTypes = ['Forest', 'Mountains', 'Plains', 'Desert', 'Beach', 'Ocean'];
+    const colorScale = d3.scaleOrdinal().domain(terrainTypes).range(d3.schemeCategory10);
+
+    const sites = Array.from({ length: seedCount }, () => ({
+        coords: [Math.random() * canvas.width, Math.random() * canvas.height],
+        type: terrainTypes[Math.floor(Math.random() * terrainTypes.length * spread)]
+    }));
+
+    const voronoi = d3.voronoi().extent([[0, 0], [canvas.width, canvas.height]]);
+    const diagram = voronoi(sites.map(s => s.coords));
+    const polygons = diagram.polygons();
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    polygons.forEach((polygon, i) => {
+        context.beginPath();
+        polygon.forEach((point, j) => {
+            if (j === 0) {
+                context.moveTo(point[0], point[1]);
+            } else {
+                context.lineTo(point[0], point[1]);
+            }
+        });
+        context.closePath();
+        context.fillStyle = colorScale(sites[i].type);
+        context.fill();
+        context.stroke();
+
+        // Adjust label size based on the "scale" parameter
+        context.font = `${scale * 10}px Arial`;
+        context.fillStyle = "black";
+        const textWidth = context.measureText(sites[i].type).width;
+        context.fillText(sites[i].type, sites[i].coords[0] - textWidth / 2, sites[i].coords[1]); // Centered label
+    });
+
+    // Update legend and parameters
+    const legend = document.getElementById('legend');
+    legend.innerHTML = '';
+    terrainTypes.forEach(type => {
+        const color = colorScale(type);
+        legend.innerHTML += `<span style="color: ${color};">&#9632;</span> ${type} `;
+    });
+    document.getElementById('params').innerHTML = `Seed Count: ${seedCount}, Spread: ${spread}, Label Scale: ${scale}`;
+}
+
+// Event listeners for sliders
+document.getElementById('seedCount').addEventListener('input', function() {
+    document.getElementById('seedCountValue').textContent = this.value;
+    updateMap();
+});
+document.getElementById('spread').addEventListener('input', function() {
+    document.getElementById('spreadValue').textContent = this.value;
+    updateMap();
+});
+document.getElementById('scale').addEventListener('input', function() {
+    document.getElementById('scaleValue').textContent = this.value;
+    updateMap();
+});
+
+function updateMap() {
+    const seedCount = document.getElementById('seedCount').value;
+    const spread = document.getElementById('spread').value;
+    const scale = document.getElementById('scale').value;
+    generateVoronoiMap(parseInt(seedCount, 10), parseFloat(spread), parseFloat(scale));
+}
+
+// Initial map generation
+updateMap();
+</script>
+</body>
+</html>
+
+
+
